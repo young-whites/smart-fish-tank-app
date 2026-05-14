@@ -34,6 +34,9 @@ class TcpClient {
     private val _connectionState = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
     val connectionState: SharedFlow<Boolean> = _connectionState
 
+    private val _errorMessage = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val errorMessage: SharedFlow<String> = _errorMessage
+
     val isConnected: Boolean
         get() = socket?.isConnected == true && socket?.isClosed == false
 
@@ -64,6 +67,7 @@ class TcpClient {
                 receiveLoop()
             } catch (e: Exception) {
                 Log.e(TAG, "TCP connection failed: ${e.message}")
+                _errorMessage.emit("TCP Connect Failed: ${e.message}")
                 Log.d(TAG, "TCP receive loop ended")
             _connectionState.emit(false)
                 cleanup()

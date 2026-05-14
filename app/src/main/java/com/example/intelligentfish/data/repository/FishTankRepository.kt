@@ -12,6 +12,7 @@ class FishTankRepository {
 
     val incomingFrames: SharedFlow<ByteArray> = tcpClient.incomingFrames
     val connectionState: SharedFlow<Boolean> = tcpClient.connectionState
+    val tcpErrorMessages: SharedFlow<String> = tcpClient.errorMessage
 
     val isConnected: Boolean get() = tcpClient.isConnected
 

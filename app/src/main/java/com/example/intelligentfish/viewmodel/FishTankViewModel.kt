@@ -62,6 +62,13 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
             }
         }
 
+        // 监听 TCP 错误消息
+        viewModelScope.launch {
+            repository.tcpErrorMessages.collect { msg ->
+                toastMessage.emit(msg)
+            }
+        }
+
         // 监听收到的数据帧
         viewModelScope.launch {
             repository.incomingFrames.collect { frame ->
