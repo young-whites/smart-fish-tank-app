@@ -50,4 +50,8 @@ class FishTankRepository {
     fun setFeedInterval(seconds: Int) {
         tcpClient.sendFrame(Protocol.buildSetFeedIntervalFrame(seconds))
     }
+
+    fun sendRawBytes(bytes: ByteArray) {
+        tcpClient.sendFrame(bytes)
+    }
 }

@@ -113,7 +113,7 @@ fun ConnectionBar(
             if (!connected && wifiDevices.isEmpty() && !isScanning) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "点击「扫描设备」搜索附近鱼缸热点",
+                    "点击「扫描设备」搜索附近设备热点",
                     color = Color.Gray, style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(start = 20.dp, bottom = 4.dp)
                 )

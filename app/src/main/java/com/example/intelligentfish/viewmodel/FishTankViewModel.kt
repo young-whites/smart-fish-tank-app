@@ -7,8 +7,12 @@ import com.example.intelligentfish.data.model.*
 import com.example.intelligentfish.data.net.Protocol
 import com.example.intelligentfish.data.net.WifiScanner
 import com.example.intelligentfish.data.repository.FishTankRepository
+import com.example.intelligentfish.ui.test.FrameLog
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class FishTankViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -37,6 +41,12 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
     val feedIntervalSeconds: StateFlow<Int> = _feedIntervalSeconds.asStateFlow()
 
     val toastMessage = MutableSharedFlow<String>(extraBufferCapacity = 16)
+
+    // ===== Test mode state =====
+    private val _testFrameLogs = MutableStateFlow<List<FrameLog>>(emptyList())
+    val testFrameLogs: StateFlow<List<FrameLog>> = _testFrameLogs.asStateFlow()
+
+    private val testTimeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
     init {
         // 监听连接状态
@@ -68,6 +78,21 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
                         val event = Protocol.parseAlarmEvent(frame)
                         _alarmEvents.value = _alarmEvents.value + event
                         toastMessage.emit(event.message)
+                    }
+                    // Test frames - always log regardless of mode
+                    else -> {
+                        val payload = if (frame.size > 3) {
+                            frame.drop(3).dropLast(2)
+                                .joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
+                        } else ""
+                        val log = FrameLog(
+                            timestamp = testTimeFormat.format(Date()),
+                            direction = "RX",
+                            cmd = cmd,
+                            rawHex = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) },
+                            payloadHex = payload
+                        )
+                        _testFrameLogs.value = _testFrameLogs.value + log
                     }
                 }
             }
@@ -198,6 +223,56 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
         _thresholdSet.value = _thresholdSet.value.copy(
             oxygenLevelMax = (_thresholdSet.value.oxygenLevelMax + delta).coerceIn(0, 20)
         )
+    }
+
+    // ===== Test mode functions =====
+
+    fun testConnect() {
+        viewModelScope.launch {
+            toastMessage.emit("Connecting to 192.168.4.1:8080...")
+            repository.connect(WifiScanner.DEVICE_TCP_IP, WifiScanner.DEVICE_TCP_PORT, viewModelScope)
+        }
+    }
+
+    fun testSendHex(hexString: String) {
+        try {
+            val bytes = hexString.trim()
+                .split(Regex("[ ,]+"))
+                .filter { it.isNotEmpty() }
+                .map { it.toInt(16).toByte() }
+                .toByteArray()
+            if (bytes.isEmpty()) {
+                viewModelScope.launch { toastMessage.emit("Invalid HEX input") }
+                return
+            }
+            repository.sendRawBytes(bytes)
+            val log = FrameLog(
+                timestamp = testTimeFormat.format(Date()),
+                direction = "TX",
+                cmd = if (bytes.size >= 2) bytes[1] else 0,
+                rawHex = bytes.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) },
+                payloadHex = if (bytes.size > 3) {
+                    bytes.drop(3).dropLast(2).joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
+                } else ""
+            )
+            _testFrameLogs.value = _testFrameLogs.value + log
+        } catch (e: Exception) {
+            viewModelScope.launch { toastMessage.emit("HEX parse error: \${e.message}") }
+        }
+    }
+
+    fun testSendEcho() {
+        // Build echo frame: AA 10 00 10 55
+        val frame = byteArrayOf(0xAA.toByte(), 0x10, 0x00, 0x10.toByte(), 0x55.toByte())
+        repository.sendRawBytes(frame)
+        val log = FrameLog(
+            timestamp = testTimeFormat.format(Date()),
+            direction = "TX",
+            cmd = 0x10,
+            rawHex = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) },
+            payloadHex = ""
+        )
+        _testFrameLogs.value = _testFrameLogs.value + log
     }
 
     override fun onCleared() {
