@@ -107,20 +107,24 @@ class TcpClient {
     }
 
     fun sendFrame(frame: ByteArray) {
+        val hexStr = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
+        Log.d(TAG, "sendFrame called: $hexStr (scope=${scope != null})")
         scope?.launch(Dispatchers.IO) {
             try {
                 if (outputStream == null) {
-                    Log.e(TAG, "Send failed: outputStream is null (not connected)")
+                    Log.e(TAG, "Send failed: outputStream is null")
                     _errorMessage.emit("Not connected")
                     return@launch
                 }
+                Log.d(TAG, "Writing ${frame.size} bytes to stream...")
                 outputStream?.write(frame)
                 outputStream?.flush()
+                Log.d(TAG, "Write OK")
             } catch (e: Exception) {
                 Log.e(TAG, "Send failed: ${e.javaClass.simpleName}: ${e.message}")
                 _errorMessage.emit("Send failed: ${e.message ?: "connection lost"}")
             }
-        }
+        } ?: Log.e(TAG, "sendFrame: scope is null!")
     }
 
     private suspend fun receiveLoop() {

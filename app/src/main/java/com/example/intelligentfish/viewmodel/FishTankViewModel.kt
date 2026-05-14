@@ -287,6 +287,7 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun controlLed(ledId: Int, on: Boolean) {
+        android.util.Log.d("FishTankVM", "controlLed: ledId=$ledId on=$on")
         repository.controlLed(ledId, on)
         viewModelScope.launch {
             toastMessage.emit("LED${ledId + 1} ${if (on) "ON" else "OFF"}")
