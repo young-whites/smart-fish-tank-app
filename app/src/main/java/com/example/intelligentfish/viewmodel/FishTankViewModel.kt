@@ -257,7 +257,7 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
             )
             _testFrameLogs.value = _testFrameLogs.value + log
         } catch (e: Exception) {
-            viewModelScope.launch { toastMessage.emit("HEX parse error: \${e.message}") }
+            viewModelScope.launch { toastMessage.emit("HEX parse error: ${e.message}") }
         }
     }
 
