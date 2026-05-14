@@ -23,7 +23,7 @@ class WifiScanner(private val context: Context) {
 
     companion object {
         private const val TAG = "WifiScanner"
-        const val DEVICE_SSID = "ESP8266"
+        const val DEVICE_SSID = "FishTank"
         const val DEVICE_PASSWORD = "12345678"
         const val DEVICE_TCP_IP = "192.168.4.1"
         const val DEVICE_TCP_PORT = 8080

@@ -78,12 +78,6 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
                     Protocol.CMD_SENSOR_DATA -> {
                         if (frame.size >= 18) {  /* HEAD+CMD+LEN + 14 payload + SUM+END */
                             _sensorData.value = Protocol.parseSensorData(frame)
-                        } else {
-                            _testFrameLogs.value = _testFrameLogs.value + FrameLog(
-                                timestamp = testTimeFormat.format(Date()),
-                                direction = "RX",
-                                hexData = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
-                            )
                         }
                     }
                     Protocol.CMD_DEVICE_STATUS -> {
