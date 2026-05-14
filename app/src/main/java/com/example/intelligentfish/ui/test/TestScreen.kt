@@ -22,9 +22,7 @@ import java.util.*
 data class FrameLog(
     val timestamp: String,
     val direction: String, // "RX" or "TX"
-    val cmd: Byte,
-    val rawHex: String,
-    val payloadHex: String
+    val hexData: String    // Full hex string of the frame
 )
 
 @Composable
@@ -38,157 +36,271 @@ fun TestScreen(
     modifier: Modifier = Modifier
 ) {
     var hexInput by remember { mutableStateOf("") }
+    var showHex by remember { mutableStateOf(true) }
 
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        // Connection bar
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFF1A1A2E))
+    ) {
+        // ==================== Top: Connection Bar ====================
+        Surface(
+            color = Color(0xFF16213E),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Protocol badge
                 Surface(
-                    shape = RoundedCornerShape(50),
-                    color = if (connected) StatusOnline else StatusOffline,
-                    modifier = Modifier.size(10.dp)
-                ) {}
-                Spacer(Modifier.width(10.dp))
+                    shape = RoundedCornerShape(4.dp),
+                    color = Color(0xFF0F3460),
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Text(
+                        "TCP",
+                        color = Color(0xFFE94560),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                // IP:Port
                 Text(
-                    text = if (connected) "TCP Connected" else "Disconnected",
-                    color = if (connected) StatusOnline else StatusOffline,
-                    fontWeight = FontWeight.Medium,
+                    "192.168.4.1:8080",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
                     modifier = Modifier.weight(1f)
                 )
+
+                // Status dot
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            if (connected) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            shape = RoundedCornerShape(50)
+                        )
+                )
+
+                Spacer(Modifier.width(8.dp))
+
+                // Connect/Disconnect button
                 Button(
                     onClick = if (connected) onDisconnect else onConnect,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (connected) StatusOffline else BluePrimary
+                        containerColor = if (connected) Color(0xFFF44336) else Color(0xFF4CAF50)
                     ),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
                 ) {
-                    Text(if (connected) "Disconnect" else "Connect")
+                    Text(
+                        if (connected) "断开" else "连接",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        HorizontalDivider(color = Color(0xFF0F3460), thickness = 1.dp)
 
-        // Frame log area
-        Text("Frame Log", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BluePrimary)
-        Spacer(Modifier.height(4.dp))
-
+        // ==================== Middle: Receive Log Area ====================
         val listState = rememberLazyListState()
-        Card(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+
+        if (frameLogs.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("📡", fontSize = 32.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "点击「连接」开始通信",
+                        color = Color(0xFF666666),
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (connected) "已连接，等待数据..." else "未连接",
+                        color = if (connected) Color(0xFF4CAF50) else Color(0xFF888888),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+            ) {
+                items(frameLogs) { log ->
+                    LogItem(log)
+                }
+            }
+            LaunchedEffect(frameLogs.size) {
+                if (frameLogs.isNotEmpty()) {
+                    listState.animateScrollToItem(frameLogs.size - 1)
+                }
+            }
+        }
+
+        HorizontalDivider(color = Color(0xFF0F3460), thickness = 1.dp)
+
+        // ==================== Bottom: Send Area ====================
+        Surface(
+            color = Color(0xFF16213E),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            if (frameLogs.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    contentAlignment = Alignment.Center
+            Column(modifier = Modifier.padding(8.dp)) {
+                // Quick action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("No frames yet", color = Color.Gray, fontSize = 13.sp)
+                    QuickButton(
+                        text = "Echo",
+                        onClick = onSendEcho,
+                        enabled = connected,
+                        modifier = Modifier.weight(1f)
+                    )
+                    QuickButton(
+                        text = "清空",
+                        onClick = { /* clear logs via parent */ },
+                        enabled = true,
+                        modifier = Modifier.weight(1f),
+                        bgColor = Color(0xFF333333)
+                    )
                 }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize().padding(8.dp)
+
+                Spacer(Modifier.height(8.dp))
+
+                // HEX input + send
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(frameLogs) { log ->
-                        FrameLogItem(log)
-                        HorizontalDivider(color = Color(0xFF333333), thickness = 0.5.dp)
+                    OutlinedTextField(
+                        value = hexInput,
+                        onValueChange = { hexInput = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = {
+                            Text(
+                                "AA 10 00 10 55",
+                                color = Color(0xFF555555),
+                                fontSize = 13.sp
+                            )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFE94560),
+                            unfocusedBorderColor = Color(0xFF333333),
+                            focusedTextColor = Color(0xFFE0E0E0),
+                            unfocusedTextColor = Color(0xFFE0E0E0),
+                            cursorColor = Color(0xFFE94560),
+                            focusedContainerColor = Color(0xFF1A1A2E),
+                            unfocusedContainerColor = Color(0xFF1A1A2E)
+                        ),
+                        textStyle = LocalTextStyle.current.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp
+                        )
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Button(
+                        onClick = {
+                            onSendHex(hexInput)
+                            hexInput = ""
+                        },
+                        enabled = connected && hexInput.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE94560),
+                            disabledContainerColor = Color(0xFF333333)
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)
+                    ) {
+                        Text("发送", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
-                // Auto-scroll to bottom
-                LaunchedEffect(frameLogs.size) {
-                    if (frameLogs.isNotEmpty()) {
-                        listState.animateScrollToItem(frameLogs.size - 1)
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        // Send area
-        Text("Send", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BluePrimary)
-        Spacer(Modifier.height(4.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = hexInput,
-                onValueChange = { hexInput = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("AA 10 00 10 55", fontSize = 13.sp) },
-                singleLine = true,
-                shape = RoundedCornerShape(8.dp),
-                textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 13.sp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Button(
-                onClick = {
-                    onSendHex(hexInput)
-                    hexInput = ""
-                },
-                enabled = connected && hexInput.isNotBlank(),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Send")
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Quick send buttons
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = onSendEcho,
-                enabled = connected,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
-            ) {
-                Text("Echo (0x10)", fontSize = 12.sp)
             }
         }
     }
 }
 
 @Composable
-private fun FrameLogItem(log: FrameLog) {
-    val dirColor = if (log.direction == "RX") Color(0xFF4CAF50) else Color(0xFFFF9800)
+private fun LogItem(log: FrameLog) {
+    val isRx = log.direction == "RX"
+    val dirColor = if (isRx) Color(0xFF4CAF50) else Color(0xFFFF9800)
+    val dirArrow = if (isRx) "收←" else "发→"
+
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalAlignment = Alignment.Top
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp, horizontal = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(log.timestamp, color = Color.Gray, fontSize = 10.sp, modifier = Modifier.width(60.dp))
-        Spacer(Modifier.width(4.dp))
+        // Timestamp
         Text(
-            log.direction,
+            log.timestamp,
+            color = Color(0xFF666666),
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.width(56.dp)
+        )
+
+        // Direction indicator
+        Text(
+            dirArrow,
             color = dirColor,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(22.dp)
+            modifier = Modifier.width(28.dp)
         )
-        Spacer(Modifier.width(4.dp))
+
+        // HEX data
         Text(
-            "CMD=0x%02X".format(log.cmd.toInt() and 0xFF),
-            color = Color.White,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.width(60.dp)
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            log.payloadHex,
+            log.hexData,
             color = Color(0xFFB0BEC5),
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontFamily = FontFamily.Monospace,
             modifier = Modifier.weight(1f)
         )
+    }
+}
+
+@Composable
+private fun QuickButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    bgColor: Color = Color(0xFF0F3460)
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = bgColor,
+            disabledContainerColor = Color(0xFF222222)
+        ),
+        shape = RoundedCornerShape(6.dp),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
+        Text(text, fontSize = 12.sp)
     }
 }

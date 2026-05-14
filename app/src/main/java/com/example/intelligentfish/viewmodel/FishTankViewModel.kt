@@ -88,16 +88,10 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
                     }
                     // Test frames - always log regardless of mode
                     else -> {
-                        val payload = if (frame.size > 3) {
-                            frame.drop(3).dropLast(2)
-                                .joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
-                        } else ""
                         val log = FrameLog(
                             timestamp = testTimeFormat.format(Date()),
                             direction = "RX",
-                            cmd = cmd,
-                            rawHex = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) },
-                            payloadHex = payload
+                            hexData = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
                         )
                         _testFrameLogs.value = _testFrameLogs.value + log
                     }
@@ -256,11 +250,7 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
             val log = FrameLog(
                 timestamp = testTimeFormat.format(Date()),
                 direction = "TX",
-                cmd = if (bytes.size >= 2) bytes[1] else 0,
-                rawHex = bytes.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) },
-                payloadHex = if (bytes.size > 3) {
-                    bytes.drop(3).dropLast(2).joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
-                } else ""
+                hexData = bytes.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
             )
             _testFrameLogs.value = _testFrameLogs.value + log
         } catch (e: Exception) {
@@ -275,9 +265,7 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
         val log = FrameLog(
             timestamp = testTimeFormat.format(Date()),
             direction = "TX",
-            cmd = 0x10,
-            rawHex = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) },
-            payloadHex = ""
+            hexData = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
         )
         _testFrameLogs.value = _testFrameLogs.value + log
     }
