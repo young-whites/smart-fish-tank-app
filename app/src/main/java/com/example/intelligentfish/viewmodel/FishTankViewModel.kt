@@ -76,15 +76,27 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
                 val cmd = frame[1] // CMD 在帧头(0xAA)后第1字节
                 when (cmd) {
                     Protocol.CMD_SENSOR_DATA -> {
-                        _sensorData.value = Protocol.parseSensorData(frame)
+                        if (frame.size >= 18) {  /* HEAD+CMD+LEN + 14 payload + SUM+END */
+                            _sensorData.value = Protocol.parseSensorData(frame)
+                        } else {
+                            _testFrameLogs.value = _testFrameLogs.value + FrameLog(
+                                timestamp = testTimeFormat.format(Date()),
+                                direction = "RX",
+                                hexData = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
+                            )
+                        }
                     }
                     Protocol.CMD_DEVICE_STATUS -> {
-                        _deviceStatus.value = Protocol.parseDeviceStatus(frame)
+                        if (frame.size >= 10) {
+                            _deviceStatus.value = Protocol.parseDeviceStatus(frame)
+                        }
                     }
                     Protocol.CMD_ALARM_EVENT -> {
-                        val event = Protocol.parseAlarmEvent(frame)
-                        _alarmEvents.value = _alarmEvents.value + event
-                        toastMessage.emit(event.message)
+                        if (frame.size >= 7) {
+                            val event = Protocol.parseAlarmEvent(frame)
+                            _alarmEvents.value = _alarmEvents.value + event
+                            toastMessage.emit(event.message)
+                        }
                     }
                     // Test frames - always log regardless of mode
                     else -> {
