@@ -107,19 +107,19 @@ class TcpClient {
     }
 
     fun sendFrame(frame: ByteArray) {
-        try {
-            if (outputStream == null) {
-                Log.e(TAG, "Send failed: outputStream is null (not connected)")
-                scope?.launch { _errorMessage.emit("未连接，请先点击连接") }
-                return
+        scope?.launch(Dispatchers.IO) {
+            try {
+                if (outputStream == null) {
+                    Log.e(TAG, "Send failed: outputStream is null (not connected)")
+                    _errorMessage.emit("Not connected")
+                    return@launch
+                }
+                outputStream?.write(frame)
+                outputStream?.flush()
+            } catch (e: Exception) {
+                Log.e(TAG, "Send failed: ${e.javaClass.simpleName}: ${e.message}")
+                _errorMessage.emit("Send failed: ${e.message ?: "connection lost"}")
             }
-            outputStream?.write(frame)
-            outputStream?.flush()
-        } catch (e: Exception) {
-            Log.e(TAG, "Send failed: ${e.javaClass.simpleName}: ${e.message}")
-            scope?.launch { _errorMessage.emit("发送失败: ${e.message ?: "连接已断开"}") }
-            // Connection is dead, trigger disconnect to allow reconnect
-            scope?.launch { disconnect() }
         }
     }
 
