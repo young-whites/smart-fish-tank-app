@@ -53,7 +53,8 @@ fun NavGraph(
                 onConnect = { viewModel.testConnect() },
                 onDisconnect = { viewModel.disconnect() },
                 onSendHex = { viewModel.testSendHex(it) },
-                onSendEcho = { viewModel.testSendEcho() }
+                onSendEcho = { viewModel.testSendEcho() },
+                onClearLogs = { viewModel.clearTestLogs() }
             )
         }
     }

@@ -258,6 +258,10 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun clearTestLogs() {
+        _testFrameLogs.value = emptyList()
+    }
+
     fun testSendEcho() {
         // Build echo frame: AA 10 00 10 55
         val frame = byteArrayOf(0xAA.toByte(), 0x10, 0x00, 0x10.toByte(), 0x55.toByte())

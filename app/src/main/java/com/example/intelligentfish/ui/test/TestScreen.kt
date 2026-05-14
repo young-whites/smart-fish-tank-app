@@ -16,13 +16,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.intelligentfish.ui.theme.*
-import java.text.SimpleDateFormat
-import java.util.*
 
 data class FrameLog(
     val timestamp: String,
     val direction: String, // "RX" or "TX"
-    val hexData: String    // Full hex string of the frame
+    val hexData: String    // Full hex string
 )
 
 @Composable
@@ -33,20 +31,22 @@ fun TestScreen(
     onDisconnect: () -> Unit,
     onSendHex: (String) -> Unit,
     onSendEcho: () -> Unit,
+    onClearLogs: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var hexInput by remember { mutableStateOf("") }
-    var showHex by remember { mutableStateOf(true) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A2E))
+            .background(Color(0xFFF5F5F5))
     ) {
         // ==================== Top: Connection Bar ====================
-        Surface(
-            color = Color(0xFF16213E),
-            modifier = Modifier.fillMaxWidth()
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(0.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -57,12 +57,12 @@ fun TestScreen(
                 // Protocol badge
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = Color(0xFF0F3460),
+                    color = BluePrimary.copy(alpha = 0.1f),
                     modifier = Modifier.padding(end = 8.dp)
                 ) {
                     Text(
                         "TCP",
-                        color = Color(0xFFE94560),
+                        color = BluePrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -72,7 +72,7 @@ fun TestScreen(
                 // IP:Port
                 Text(
                     "192.168.4.1:8080",
-                    color = Color(0xFFB0BEC5),
+                    color = Color(0xFF333333),
                     fontSize = 13.sp,
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.weight(1f)
@@ -83,7 +83,7 @@ fun TestScreen(
                     modifier = Modifier
                         .size(8.dp)
                         .background(
-                            if (connected) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            if (connected) StatusOnline else StatusOffline,
                             shape = RoundedCornerShape(50)
                         )
                 )
@@ -94,7 +94,7 @@ fun TestScreen(
                 Button(
                     onClick = if (connected) onDisconnect else onConnect,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (connected) Color(0xFFF44336) else Color(0xFF4CAF50)
+                        containerColor = if (connected) StatusOffline else BluePrimary
                     ),
                     shape = RoundedCornerShape(6.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
@@ -108,7 +108,7 @@ fun TestScreen(
             }
         }
 
-        HorizontalDivider(color = Color(0xFF0F3460), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFFE0E0E0))
 
         // ==================== Middle: Receive Log Area ====================
         val listState = rememberLazyListState()
@@ -125,13 +125,13 @@ fun TestScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "点击「连接」开始通信",
-                        color = Color(0xFF666666),
+                        color = Color(0xFF999999),
                         fontSize = 14.sp
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         if (connected) "已连接，等待数据..." else "未连接",
-                        color = if (connected) Color(0xFF4CAF50) else Color(0xFF888888),
+                        color = if (connected) StatusOnline else Color(0xFFAAAAAA),
                         fontSize = 12.sp
                     )
                 }
@@ -142,7 +142,8 @@ fun TestScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
+                    .background(Color(0xFFFAFAFA))
+                    .padding(horizontal = 6.dp)
             ) {
                 items(frameLogs) { log ->
                     LogItem(log)
@@ -155,11 +156,11 @@ fun TestScreen(
             }
         }
 
-        HorizontalDivider(color = Color(0xFF0F3460), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFFE0E0E0))
 
         // ==================== Bottom: Send Area ====================
         Surface(
-            color = Color(0xFF16213E),
+            color = Color.White,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
@@ -172,14 +173,16 @@ fun TestScreen(
                         text = "Echo",
                         onClick = onSendEcho,
                         enabled = connected,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        bgColor = BluePrimary
                     )
                     QuickButton(
                         text = "清空",
-                        onClick = { /* clear logs via parent */ },
+                        onClick = onClearLogs,
                         enabled = true,
                         modifier = Modifier.weight(1f),
-                        bgColor = Color(0xFF333333)
+                        bgColor = Color(0xFFE0E0E0),
+                        textColor = Color(0xFF666666)
                     )
                 }
 
@@ -195,22 +198,13 @@ fun TestScreen(
                         onValueChange = { hexInput = it },
                         modifier = Modifier.weight(1f),
                         placeholder = {
-                            Text(
-                                "AA 10 00 10 55",
-                                color = Color(0xFF555555),
-                                fontSize = 13.sp
-                            )
+                            Text("AA 10 00 10 55", fontSize = 13.sp, color = Color(0xFFBBBBBB))
                         },
                         singleLine = true,
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFE94560),
-                            unfocusedBorderColor = Color(0xFF333333),
-                            focusedTextColor = Color(0xFFE0E0E0),
-                            unfocusedTextColor = Color(0xFFE0E0E0),
-                            cursorColor = Color(0xFFE94560),
-                            focusedContainerColor = Color(0xFF1A1A2E),
-                            unfocusedContainerColor = Color(0xFF1A1A2E)
+                            focusedBorderColor = BluePrimary,
+                            unfocusedBorderColor = Color(0xFFDDDDDD)
                         ),
                         textStyle = LocalTextStyle.current.copy(
                             fontFamily = FontFamily.Monospace,
@@ -227,8 +221,8 @@ fun TestScreen(
                         },
                         enabled = connected && hexInput.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE94560),
-                            disabledContainerColor = Color(0xFF333333)
+                            containerColor = BluePrimary,
+                            disabledContainerColor = Color(0xFFE0E0E0)
                         ),
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)
@@ -244,25 +238,23 @@ fun TestScreen(
 @Composable
 private fun LogItem(log: FrameLog) {
     val isRx = log.direction == "RX"
-    val dirColor = if (isRx) Color(0xFF4CAF50) else Color(0xFFFF9800)
+    val dirColor = if (isRx) Color(0xFF2E7D32) else Color(0xFFE65100)
     val dirArrow = if (isRx) "收←" else "发→"
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp, horizontal = 6.dp),
+            .padding(vertical = 2.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Timestamp
         Text(
             log.timestamp,
-            color = Color(0xFF666666),
+            color = Color(0xFFAAAAAA),
             fontSize = 10.sp,
             fontFamily = FontFamily.Monospace,
-            modifier = Modifier.width(56.dp)
+            modifier = Modifier.width(52.dp)
         )
 
-        // Direction indicator
         Text(
             dirArrow,
             color = dirColor,
@@ -271,10 +263,9 @@ private fun LogItem(log: FrameLog) {
             modifier = Modifier.width(28.dp)
         )
 
-        // HEX data
         Text(
             log.hexData,
-            color = Color(0xFFB0BEC5),
+            color = Color(0xFF333333),
             fontSize = 12.sp,
             fontFamily = FontFamily.Monospace,
             modifier = Modifier.weight(1f)
@@ -288,7 +279,8 @@ private fun QuickButton(
     onClick: () -> Unit,
     enabled: Boolean,
     modifier: Modifier = Modifier,
-    bgColor: Color = Color(0xFF0F3460)
+    bgColor: Color = BluePrimary,
+    textColor: Color = Color.White
 ) {
     Button(
         onClick = onClick,
@@ -296,11 +288,11 @@ private fun QuickButton(
         modifier = modifier,
         colors = ButtonDefaults.buttonColors(
             containerColor = bgColor,
-            disabledContainerColor = Color(0xFF222222)
+            disabledContainerColor = Color(0xFFEEEEEE)
         ),
         shape = RoundedCornerShape(6.dp),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        Text(text, fontSize = 12.sp)
+        Text(text, fontSize = 12.sp, color = if (enabled) textColor else Color(0xFF999999))
     }
 }

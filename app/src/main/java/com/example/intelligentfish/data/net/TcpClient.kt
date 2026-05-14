@@ -56,23 +56,23 @@ class TcpClient {
                 val sock = Socket()
                 sock.connect(InetSocketAddress(savedHost, savedPort), 5000)
                 sock.tcpNoDelay = true
-                sock.keepAlive = false
-                sock.soTimeout = 0  // No read timeout - block indefinitely
+                sock.keepAlive = true // Enable TCP keepalive for stability
+                sock.soTimeout = 0
+                // Increase receive buffer for better throughput
+                sock.receiveBufferSize = 8192
                 socket = sock
                 inputStream = sock.getInputStream()
                 outputStream = sock.getOutputStream()
-                reconnectAttempt = 0 // 连接成功，重置重试计数
+                reconnectAttempt = 0
                 Log.d(TAG, "TCP connected to $savedHost:$savedPort")
                 Log.d(TAG, "Socket isConnected=${sock.isConnected} isClosed=${sock.isClosed}")
                 _connectionState.emit(true)
                 receiveLoop()
             } catch (e: Exception) {
-                Log.e(TAG, "TCP connection failed: ${e.message}")
-                _errorMessage.emit("TCP Connect Failed: ${e.message}")
-                Log.d(TAG, "TCP receive loop ended")
-            _connectionState.emit(false)
+                Log.e(TAG, "TCP connection failed: ${e.javaClass.simpleName}: ${e.message}")
+                _errorMessage.emit("TCP连接失败: ${e.message}")
+                _connectionState.emit(false)
                 cleanup()
-                // 连接失败，尝试自动重连
                 if (!manualDisconnect) {
                     scheduleReconnect()
                 }
@@ -110,8 +110,9 @@ class TcpClient {
         try {
             outputStream?.write(frame)
             outputStream?.flush()
-        } catch (_: Exception) {
-            disconnect()
+        } catch (e: Exception) {
+            Log.e(TAG, "Send failed: ${e.message}")
+            // Do not disconnect immediately; let receive loop detect connection state
         }
     }
 
@@ -120,27 +121,35 @@ class TcpClient {
         var leftover = ByteArray(0)
 
         Log.d(TAG, "Receive loop started")
-        while (currentCoroutineContext().isActive && isConnected) {
-            try {
-                val bytesRead = inputStream?.read(buffer) ?: -1
-                Log.d(TAG, "Read returned: $bytesRead")
-                if (bytesRead < 0) {
-                    Log.d(TAG, "Server closed connection (read returned -1)")
+        try {
+            while (currentCoroutineContext().isActive) {
+                val bytesRead = try {
+                    inputStream?.read(buffer) ?: -1
+                } catch (e: java.net.SocketTimeoutException) {
+                    Log.d(TAG, "Read timeout, continuing")
+                    continue
+                } catch (e: Exception) {
+                    Log.e(TAG, "Read exception: ${e.javaClass.simpleName}: ${e.message}")
                     break
                 }
 
-                // 合并上次剩余数据
-                val combined = leftover + buffer.copyOf(bytesRead)
-                leftover = processBuffer(combined)
-            } catch (e: Exception) {
-                Log.e(TAG, "Receive loop exception: ${e.javaClass.simpleName}: ${e.message}")
-                if (currentCoroutineContext().isActive) break
+                if (bytesRead < 0) {
+                    Log.d(TAG, "Server closed connection (EOF)")
+                    break
+                }
+
+                if (bytesRead > 0) {
+                    Log.d(TAG, "Received $bytesRead bytes")
+                    val combined = leftover + buffer.copyOf(bytesRead)
+                    leftover = processBuffer(combined)
+                }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Receive loop outer exception: ${e.message}")
         }
         Log.d(TAG, "Receive loop ended, emitting disconnected")
         _connectionState.emit(false)
         cleanup()
-        // 连接断开后尝试自动重连
         if (!manualDisconnect) {
             scheduleReconnect()
         }
