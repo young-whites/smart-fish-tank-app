@@ -63,6 +63,7 @@ class TcpClient {
                 outputStream = sock.getOutputStream()
                 reconnectAttempt = 0 // 连接成功，重置重试计数
                 Log.d(TAG, "TCP connected to $savedHost:$savedPort")
+                Log.d(TAG, "Socket isConnected=${sock.isConnected} isClosed=${sock.isClosed}")
                 _connectionState.emit(true)
                 receiveLoop()
             } catch (e: Exception) {
@@ -118,18 +119,25 @@ class TcpClient {
         val buffer = ByteArray(4096)
         var leftover = ByteArray(0)
 
+        Log.d(TAG, "Receive loop started")
         while (currentCoroutineContext().isActive && isConnected) {
             try {
                 val bytesRead = inputStream?.read(buffer) ?: -1
-                if (bytesRead < 0) break
+                Log.d(TAG, "Read returned: $bytesRead")
+                if (bytesRead < 0) {
+                    Log.d(TAG, "Server closed connection (read returned -1)")
+                    break
+                }
 
                 // 合并上次剩余数据
                 val combined = leftover + buffer.copyOf(bytesRead)
                 leftover = processBuffer(combined)
             } catch (e: Exception) {
+                Log.e(TAG, "Receive loop exception: ${e.javaClass.simpleName}: ${e.message}")
                 if (currentCoroutineContext().isActive) break
             }
         }
+        Log.d(TAG, "Receive loop ended, emitting disconnected")
         _connectionState.emit(false)
         cleanup()
         // 连接断开后尝试自动重连
