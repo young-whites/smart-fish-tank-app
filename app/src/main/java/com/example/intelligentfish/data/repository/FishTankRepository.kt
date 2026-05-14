@@ -55,4 +55,8 @@ class FishTankRepository {
     fun sendRawBytes(bytes: ByteArray) {
         tcpClient.sendFrame(bytes)
     }
+
+    fun controlLed(ledId: Int, on: Boolean) {
+        tcpClient.sendFrame(Protocol.buildLedControlFrame(ledId, on))
+    }
 }

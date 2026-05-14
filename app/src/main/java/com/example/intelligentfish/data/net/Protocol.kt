@@ -30,6 +30,7 @@ object Protocol {
     const val CMD_TRIGGER_FEED: Byte = 0x14
     const val CMD_SET_ALARM: Byte = 0x15
     const val CMD_SET_FEED_INTERVAL: Byte = 0x16
+    const val CMD_LED_CONTROL: Byte = 0x20
 
     // 最小帧: HEAD(1) + CMD(1) + LEN(1) + SUM(1) + END(1) = 5
     private const val MIN_FRAME_SIZE = 5
@@ -226,4 +227,8 @@ object Protocol {
         )
         return buildFrame(CMD_SET_FEED_INTERVAL, data)
     }
+
+    /** CMD 0x20 控制LED (LEN=2): led_id(0=LED1,1=LED2) + state(0=OFF,1=ON) */
+    fun buildLedControlFrame(ledId: Int, on: Boolean): ByteArray =
+        buildFrame(CMD_LED_CONTROL, byteArrayOf(ledId.toByte(), if (on) 1.toByte() else 0.toByte()))
 }

@@ -286,6 +286,13 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
         _testFrameLogs.value = _testFrameLogs.value + log
     }
 
+    fun controlLed(ledId: Int, on: Boolean) {
+        repository.controlLed(ledId, on)
+        viewModelScope.launch {
+            toastMessage.emit("LED${ledId + 1} ${if (on) "ON" else "OFF"}")
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         wifiScanner.destroy()
