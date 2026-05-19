@@ -32,7 +32,7 @@ fun TestScreen(
     onSendHex: (String) -> Unit,
     onSendEcho: () -> Unit,
     onClearLogs: () -> Unit,
-    onLedControl: (Int, Boolean) -> Unit, // ledId, state
+    onSendOk: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var hexInput by remember { mutableStateOf("") }
@@ -165,44 +165,17 @@ fun TestScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
-                // LED control buttons
+                // OK send button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     QuickButton(
-                        text = "LED1 ON",
-                        onClick = { onLedControl(0, true) },
+                        text = "OK",
+                        onClick = onSendOk,
                         enabled = connected,
                         modifier = Modifier.weight(1f),
                         bgColor = Color(0xFF4CAF50)
-                    )
-                    QuickButton(
-                        text = "LED1 OFF",
-                        onClick = { onLedControl(0, false) },
-                        enabled = connected,
-                        modifier = Modifier.weight(1f),
-                        bgColor = Color(0xFFFF5722)
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    QuickButton(
-                        text = "LED2 ON",
-                        onClick = { onLedControl(1, true) },
-                        enabled = connected,
-                        modifier = Modifier.weight(1f),
-                        bgColor = Color(0xFF4CAF50)
-                    )
-                    QuickButton(
-                        text = "LED2 OFF",
-                        onClick = { onLedControl(1, false) },
-                        enabled = connected,
-                        modifier = Modifier.weight(1f),
-                        bgColor = Color(0xFFFF5722)
                     )
                 }
 

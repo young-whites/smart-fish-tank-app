@@ -155,16 +155,13 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
      * @param state true=开 false=关
      */
     fun controlRelay(relayId: Int, state: Boolean) {
-        // 加水/排水互斥：开启一个时自动关闭另一个（与MCU端逻辑一致）
+        // 加水/排水互斥：开启一个时自动关闭另一个
         if (relayId == 1 && state) {
-            // 开启加水 → 先关闭排水
             repository.controlRelay(2, false)
         } else if (relayId == 2 && state) {
-            // 开启排水 → 先关闭加水
             repository.controlRelay(1, false)
         }
         repository.controlRelay(relayId, state)
-        // 等待MCU回复CMD_DEVICE_STATUS后由incomingFrames监听器更新UI
     }
 
     fun syncThresholds() {
@@ -266,6 +263,17 @@ class FishTankViewModel(application: Application) : AndroidViewModel(application
 
     fun clearTestLogs() {
         _testFrameLogs.value = emptyList()
+    }
+
+    fun testSendOk() {
+        val bytes = byteArrayOf(0x6F, 0x6B) // ASCII "ok"
+        repository.sendRawBytes(bytes)
+        val log = FrameLog(
+            timestamp = testTimeFormat.format(Date()),
+            direction = "TX",
+            hexData = "6F 6B"
+        )
+        _testFrameLogs.value = _testFrameLogs.value + log
     }
 
     fun testSendEcho() {

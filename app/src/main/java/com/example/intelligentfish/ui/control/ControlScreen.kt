@@ -97,7 +97,7 @@ fun ControlScreen(viewModel: FishTankViewModel) {
             Spacer(modifier = Modifier.height(4.dp))
             Button(
                 onClick = { checkConnected { viewModel.triggerFeed() } },
-                enabled = connected,
+                enabled = connected && currentMode == WorkMode.MANUAL,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

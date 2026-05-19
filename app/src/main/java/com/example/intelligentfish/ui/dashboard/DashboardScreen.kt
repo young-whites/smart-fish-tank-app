@@ -68,10 +68,7 @@ fun DashboardScreen(viewModel: FishTankViewModel) {
 
         // 喂食倒计时
         item {
-            FeedCountdownCard(
-                countdown = sensorData.feedCountdown,
-                onQuickFeed = { viewModel.triggerFeed() }
-            )
+            FeedCountdownCard(countdown = sensorData.feedCountdown)
         }
     }
 }
@@ -231,7 +228,7 @@ private fun RelayChip(name: String, icon: String, isOn: Boolean) {
 }
 
 @Composable
-private fun FeedCountdownCard(countdown: Int, onQuickFeed: () -> Unit) {
+private fun FeedCountdownCard(countdown: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -242,8 +239,7 @@ private fun FeedCountdownCard(countdown: Int, onQuickFeed: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
                 Text(
@@ -266,15 +262,6 @@ private fun FeedCountdownCard(countdown: Int, onQuickFeed: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     color = BluePrimaryDark,
                 )
-            }
-
-            Button(
-                onClick = onQuickFeed,
-                colors = ButtonDefaults.buttonColors(containerColor = WarningYellow),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
-            ) {
-                Text("🐟 快速喂食", color = BluePrimaryDark, fontWeight = FontWeight.Bold)
             }
         }
     }

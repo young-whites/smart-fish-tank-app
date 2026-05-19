@@ -55,7 +55,7 @@ fun NavGraph(
                 onSendHex = { viewModel.testSendHex(it) },
                 onSendEcho = { viewModel.testSendEcho() },
                 onClearLogs = { viewModel.clearTestLogs() },
-                onLedControl = { ledId, on -> viewModel.controlLed(ledId, on) }
+                onSendOk = { viewModel.testSendOk() }
             )
         }
     }
